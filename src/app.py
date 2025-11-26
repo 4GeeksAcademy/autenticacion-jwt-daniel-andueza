@@ -11,6 +11,11 @@ from api.routes import api
 from api.admin import setup_admin
 from api.commands import setup_commands
 
+# Nuevos imports
+from flask_cors import CORS  # Para permitir conexiones desde React
+from flask_jwt_extended import JWTManager  # Para autenticación JWT
+
+
 # from models import Person
 
 ENV = "development" if os.getenv("FLASK_DEBUG") == "1" else "production"
@@ -19,7 +24,7 @@ static_file_dir = os.path.join(os.path.dirname(
 app = Flask(__name__)
 app.url_map.strict_slashes = False
 
-# database condiguration
+# database configuration
 db_url = os.getenv("DATABASE_URL")
 if db_url is not None:
     app.config['SQLALCHEMY_DATABASE_URI'] = db_url.replace(
@@ -31,10 +36,19 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 MIGRATE = Migrate(app, db, compare_type=True)
 db.init_app(app)
 
+# Configuración JWT
+# Esta clave se usa para firmar los tokens
+app.config["JWT_SECRET_KEY"] = os.getenv(
+    "JWT_SECRET_KEY", "super-secret-key-change-this")
+jwt = JWTManager(app)
+
+# Activar CORS para permitir acceso desde el frontend
+CORS(app)
+
 # add the admin
 setup_admin(app)
 
-# add the admin
+# add custom commands
 setup_commands(app)
 
 # Add all endpoints form the API with a "api" prefix
@@ -57,6 +71,8 @@ def sitemap():
     return send_from_directory(static_file_dir, 'index.html')
 
 # any other endpoint will try to serve it like a static file
+
+
 @app.route('/<path:path>', methods=['GET'])
 def serve_any_other_file(path):
     if not os.path.isfile(os.path.join(static_file_dir, path)):
